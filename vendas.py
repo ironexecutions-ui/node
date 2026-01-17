@@ -66,8 +66,10 @@ def pos_processar_venda(venda_id, comercio, produtos, pagamento, total, cpf):
         requests.post(
             "http://localhost:3334/print",
             json={"url": url_pdf},
-            timeout=20
+            timeout=5
         )
+
+
         log(f"Comanda enviada para impressão venda {venda_id}")
 
     try:
@@ -367,8 +369,15 @@ def gerar_pdf_comanda(venda_id, comercio, produtos, pagamento, total):
 # ===============================
 # ROTA FINALIZAR VENDA
 # ===============================
+from fastapi import BackgroundTasks
+
 @router.post("/vendas/finalizar")
-def finalizar_venda(dados: dict, usuario=Depends(verificar_token_cliente)):
+def finalizar_venda(
+    dados: dict,
+    background_tasks: BackgroundTasks,
+    usuario=Depends(verificar_token_cliente)
+):
+
 
     log("INÍCIO DA ROTA /vendas/finalizar")
 
@@ -504,14 +513,16 @@ def finalizar_venda(dados: dict, usuario=Depends(verificar_token_cliente)):
         # ===============================
         # PÓS PROCESSAMENTO ÚNICO
         # ===============================
-        pos_processar_venda(
-            venda_id=venda_id,
-            comercio=comercio,
-            produtos=produtos,
-            pagamento=dados["pagamento"],
-            total=dados["valor"],
-            cpf=cpf
+        background_tasks.add_task(
+            pos_processar_venda,
+            venda_id,
+            comercio,
+            produtos,
+            dados["pagamento"],
+            dados["valor"],
+            cpf
         )
+
 
         return {
             "ok": True,
